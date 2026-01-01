@@ -64,8 +64,8 @@ const submitVoter = () => {
 
     <!-- Tabs -->
     <div class="flex border-b border-gray-200">
-      <button @click="activeTab = 'candidates'" :class="`px-6 py-3 font-medium ${activeTab==='candidates' ? 'text-indigo-600 border-b-2 border-white' : 'text-black'}`">Candidates</button>
-      <button @click="activeTab = 'voters'" :class="`px-6 py-3 font-medium ${activeTab==='voters' ? 'text-indigo-600 border-b-2 border-white' : 'text-black'}`">Voters</button>
+      <button @click="activeTab = 'candidates'" :class="`px-6 py-3 font-medium ${activeTab==='candidates' ? 'text-white border-b-2 border-white' : 'text-black'}`">Candidates</button>
+      <button @click="activeTab = 'voters'" :class="`px-6 py-3 font-medium ${activeTab==='voters' ? 'text-white border-b-2 border-white' : 'text-black'}`">Voters</button>
     </div>
 
     <!-- CANDIDATES TAB -->
