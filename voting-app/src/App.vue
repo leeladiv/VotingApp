@@ -37,6 +37,13 @@ const statusColors = (s) => ({
           <button @click="showModal = true" class="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 font-medium shadow">+ Create Poll</button>
         </div>
 
+                <!-- Centralized Image Section -->
+        <div class="flex flex-col items-center justify-center mb-8">
+          <div class="w-full h-105 overflow-hidden rounded-xl shadow-lg p-2">
+             <img src="/voting.png" alt="Voting Image" class="w-full h-full object-cover rounded-lg" />
+          </div>
+        </div>
+
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div v-for="poll in polls" :key="poll.id" class="bg-white p-6 rounded-xl shadow border hover:shadow-lg transition">
             <span :class="['text-xs font-bold px-2 py-1 rounded-full', statusColors(getPollStatus(poll))]">{{ getPollStatus(poll) }}</span>
@@ -52,6 +59,7 @@ const statusColors = (s) => ({
       <PollManager v-else :poll="selectedPoll" @back="view = 'list'" />
 
     </div>
+    
 
     <!-- Create Modal -->
     <div v-if="showModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm z-50">
