@@ -32,7 +32,7 @@ const statusColors = (s) => ({
 </script>
 
 <template>
-  <div class="min-h-screen bg-linear-to-br from-slate-800 to-slate-600 p-8 font-sans text-white">
+  <div class="min-h-screen bg-linear-to-br from-slate-800 to-slate-600 p-8 font-sans text-black">
     <div class="max-w-5xl mx-auto">
       
       <!-- List View -->
