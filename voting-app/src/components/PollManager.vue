@@ -1,13 +1,13 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { usePolls } from '../composables/usePolls';
 import { useVoting } from '../composables/useVoting';
 import CandidateCard from './CandidateCard.vue';
 
+const { getPollStatus } = usePolls();
+
 const props = defineProps(['poll']);
 defineEmits(['back']);
-
-const { getPollStatus } = usePolls();
 
 // Reactive Wrapper for Composable
 const pollRef = computed(() => props.poll);
@@ -15,12 +15,23 @@ const { rankedCandidates, addCandidate, addVoter, castVote } = useVoting(pollRef
 
 // State
 const status = computed(() => getPollStatus(props.poll));
-const activeTab = ref('candidates');
 const voterIdInput = ref(''); 
 
 // Form Data
 const newCand = ref({ name: '', photo: '', manifesto: '' });
 const newVoter = ref({ name: '', identifier: '' });
+
+const currentView = ref('setup'); // 'setup', 'voting', 'results'
+
+watch(status, (newStatus) => {
+  if (newStatus === 'Ongoing') {
+    currentView.value = 'voting';
+  } else if (newStatus === 'Ended') {
+    currentView.value = 'results';
+  } else {
+    currentView.value = 'setup';
+  }
+}, { immediate: true });
 
 // Actions
 const submitVote = (candId) => {
@@ -47,7 +58,7 @@ const submitVoter = () => {
 
 <template>
   <div class="space-y-6">
-    <button @click="$emit('back')" class="text-gray-500 hover:text-black">← Back to Dashboard</button>
+    <button @click="$emit('back')" class="text-white hover:text-black">← Back to Dashboard</button>
     
     <!-- Poll Header -->
     <div class="bg-linear-to-r from-indigo-600 to-indigo-800 text-white p-6 rounded-2xl shadow-lg">
@@ -55,6 +66,11 @@ const submitVoter = () => {
         <div>
           <h1 class="text-3xl font-bold">{{ poll.title }}</h1>
           <p class="text-indigo-100 mt-2">{{ poll.description }}</p>
+          <!-- Added date display for clarity -->
+          <div class="flex gap-4 mt-3 text-sm text-indigo-200">
+            <span>Start: {{ new Date(poll.startDate).toLocaleString() }}</span>
+            <span>End: {{ new Date(poll.endDate).toLocaleString() }}</span>
+          </div>
         </div>
         <span class="bg-white/20 backdrop-blur px-3 py-1 rounded-full text-sm font-bold border border-white/30">
           {{ status }}
@@ -62,40 +78,101 @@ const submitVoter = () => {
       </div>
     </div>
 
-    <!-- Tabs -->
-    <div class="flex border-b border-gray-200">
-      <button @click="activeTab = 'candidates'" :class="`px-6 py-3 font-medium ${activeTab==='candidates' ? 'text-white border-b-2 border-white' : 'text-black'}`">Candidates</button>
-      <button @click="activeTab = 'voters'" :class="`px-6 py-3 font-medium ${activeTab==='voters' ? 'text-white border-b-2 border-white' : 'text-black'}`">Voters</button>
+    <!-- Setup View - Show both candidates and voters forms together -->
+    <div v-if="currentView === 'setup'" class="space-y-6">
+      <!-- Improved messaging to explain automatic transition -->
+      <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl text-center">
+        <p class="text-blue-800 font-medium">Setup your poll by adding candidates and voters below.</p>
+        <p class="text-blue-600 text-sm mt-1">The voting interface will open automatically when the poll starts.</p>
+      </div>
+
+      <!-- Add Candidate Form -->
+      <div class="bg-white p-5 rounded-xl border-2 border-blue-200 shadow-sm">
+        <h3 class="font-bold text-gray-900 mb-3 text-lg">Add Candidates</h3>
+        <div class="space-y-3">
+          <input v-model="newCand.name" placeholder="Full Name" class="w-full border-2 border-gray-300 p-2.5 rounded-lg focus:border-blue-500 focus:outline-none">
+          <input v-model="newCand.photo" placeholder="Photo URL" class="w-full border-2 border-gray-300 p-2.5 rounded-lg focus:border-blue-500 focus:outline-none">
+          <textarea v-model="newCand.manifesto" placeholder="Manifesto (Goals)" class="w-full border-2 border-gray-300 p-2.5 rounded-lg focus:border-blue-500 focus:outline-none" rows="2"></textarea>
+          <button @click="submitCandidate" class="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 font-medium">Add Candidate</button>
+        </div>
+
+        <!-- Current Candidates List -->
+        <div v-if="rankedCandidates.length > 0" class="mt-4 pt-4 border-t">
+          <p class="text-sm font-bold text-gray-600 mb-2">Current Candidates ({{ rankedCandidates.length }})</p>
+          <div class="space-y-2">
+            <div v-for="cand in rankedCandidates" :key="cand.id" class="flex items-center gap-3 bg-gray-50 p-2 rounded">
+              <img :src="cand.photo" class="w-10 h-10 rounded-full object-cover bg-gray-200">
+              <span class="font-medium text-sm">{{ cand.name }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Register Voters Form -->
+      <div class="bg-white p-5 rounded-xl border-2 border-emerald-200 shadow-sm">
+        <h3 class="font-bold text-gray-900 mb-3 text-lg">Register Voters</h3>
+        <div class="flex gap-3">
+          <input v-model="newVoter.name" placeholder="Name" class="flex-1 border-2 border-gray-300 p-2.5 rounded-lg focus:border-emerald-500 focus:outline-none">
+          <input v-model="newVoter.identifier" placeholder="Unique ID (Email/Phone)" class="flex-1 border-2 border-gray-300 p-2.5 rounded-lg focus:border-emerald-500 focus:outline-none">
+          <button @click="submitVoter" class="bg-emerald-600 text-white px-5 py-2.5 rounded-lg hover:bg-emerald-700 font-medium whitespace-nowrap">Register</button>
+        </div>
+
+        <!-- Current Voters List -->
+        <div v-if="poll.voters.length > 0" class="mt-4 pt-4 border-t">
+          <p class="text-sm font-bold text-gray-600 mb-2">Registered Voters ({{ poll.voters.length }})</p>
+          <div class="bg-white rounded-lg border overflow-hidden">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-3 py-2 text-left font-semibold">Name</th>
+                  <th class="px-3 py-2 text-left font-semibold">ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="v in poll.voters" :key="v.id" class="border-t">
+                  <td class="px-3 py-2">{{ v.name }}</td>
+                  <td class="px-3 py-2 text-gray-600 font-mono text-xs">{{ v.identifier }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- CANDIDATES TAB -->
-    <div v-if="activeTab === 'candidates'" class="space-y-6">
-      
-      <!-- Add Candidate Form -->
-      <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
-        <h3 class="font-bold text-gray-700 mb-2">Add Candidate</h3>
-        <div class="space-y-2">
-          <input v-model="newCand.name" placeholder="Full Name" class="w-full border p-2 rounded">
-          <input v-model="newCand.photo" placeholder="Photo URL" class="w-full border p-2 rounded">
-          <textarea v-model="newCand.manifesto" placeholder="Manifesto (Goals)" class="w-full border p-2 rounded"></textarea>
-          <button @click="submitCandidate" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">Add Candidate</button>
-        </div>
+    <!-- Voting View - Automatically shown when poll is ongoing -->
+    <div v-else-if="currentView === 'voting'" class="space-y-6">
+      <div class="bg-green-50 border border-green-200 p-4 rounded-xl text-center">
+        <p class="text-green-800 font-bold text-lg">Voting is Now Open!</p>
       </div>
 
-      <!-- Voting Identity Input (Only visible if Ongoing) -->
-      <div v-if="status === 'Ongoing'" class="bg-yellow-50 border border-yellow-200 p-4 rounded-xl flex items-center gap-4">
-        <div class="flex-1">
-          <label class="block text-xs font-bold text-yellow-800 uppercase mb-1">Identity Check</label>
-          <input v-model="voterIdInput" placeholder="Enter your Unique Voter ID to enable voting buttons below" class="w-full border-yellow-300 border p-2 rounded">
-        </div>
+      <!-- Voting Identity Input -->
+      <div class="bg-yellow-50 border-2 border-yellow-300 p-5 rounded-xl">
+        <label class="block text-sm font-bold text-yellow-900 uppercase mb-2">Enter Your Voter ID</label>
+        <input v-model="voterIdInput" placeholder="Enter your Unique Voter ID to vote" class="w-full border-2 border-yellow-400 p-3 rounded-lg focus:border-yellow-600 focus:outline-none">
       </div>
 
-      <!-- Results Header -->
-      <div v-if="status === 'Ended'" class="p-3 bg-indigo-50 text-indigo-800 text-center font-bold rounded border border-indigo-100">
-        🏆 Final Rankings
+      <!-- Candidates List for Voting -->
+      <div class="grid gap-4">
+        <CandidateCard 
+          v-for="cand in rankedCandidates" 
+          :key="cand.id"
+          :candidate="cand"
+          :status="status"
+          :rank="0"
+          @vote="submitVote"
+        />
+        <div v-if="rankedCandidates.length === 0" class="text-center text-gray-400 py-8">No candidates available.</div>
+      </div>
+    </div>
+
+    <!-- Results View - Automatically shown when poll has ended -->
+    <div v-else-if="currentView === 'results'" class="space-y-6">
+      <div class="p-4 bg-indigo-600 text-white text-center font-bold rounded-xl text-lg shadow-lg">
+        🏆 Poll Closed - Final Results
       </div>
 
-      <!-- Candidates List -->
+      <!-- Final Rankings -->
       <div class="grid gap-4">
         <CandidateCard 
           v-for="(cand, index) in rankedCandidates" 
@@ -105,37 +182,26 @@ const submitVoter = () => {
           :rank="index + 1"
           @vote="submitVote"
         />
-        <div v-if="rankedCandidates.length === 0" class="text-center text-gray-400 py-4">No candidates yet.</div>
+        <div v-if="rankedCandidates.length === 0" class="text-center text-gray-400 py-8">No results to display.</div>
       </div>
-    </div>
 
-    <!-- VOTERS TAB -->
-    <div v-if="activeTab === 'voters'" class="space-y-6">
-      <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
-        <h3 class="font-bold text-emerald-800 mb-2">Register Voter</h3>
-        <div class="flex gap-2">
-          <input v-model="newVoter.name" placeholder="Name" class="flex-1 border p-2 rounded">
-          <input v-model="newVoter.identifier" placeholder="Unique ID (Email/Phone)" class="flex-1 border p-2 rounded">
-          <button @click="submitVoter" class="bg-emerald-600 text-white px-4 py-2 rounded">Register</button>
+      <!-- Voter Turnout Stats -->
+      <div class="bg-white p-5 rounded-xl border shadow-sm">
+        <h3 class="font-bold text-gray-900 mb-3">Voter Turnout</h3>
+        <div class="grid grid-cols-3 gap-4 text-center">
+          <div>
+            <p class="text-2xl font-bold text-indigo-600">{{ poll.voters.length }}</p>
+            <p class="text-sm text-gray-600">Registered</p>
+          </div>
+          <div>
+            <p class="text-2xl font-bold text-green-600">{{ poll.voters.filter(v => v.hasVoted).length }}</p>
+            <p class="text-sm text-gray-600">Voted</p>
+          </div>
+          <div>
+            <p class="text-2xl font-bold text-gray-600">{{ poll.voters.filter(v => !v.hasVoted).length }}</p>
+            <p class="text-sm text-gray-600">Did Not Vote</p>
+          </div>
         </div>
-      </div>
-
-      <div class="bg-white rounded-xl border overflow-hidden">
-        <table class="w-full text-sm text-left">
-          <thead class="bg-gray-50 text-gray-500 uppercase">
-            <tr><th class="px-4 py-3">Name</th><th class="px-4 py-3">ID</th><th class="px-4 py-3">Status</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="v in poll.voters" :key="v.id" class="border-b last:border-0">
-              <td class="px-4 py-3 font-medium">{{ v.name }}</td>
-              <td class="px-4 py-3 text-gray-500 font-mono">{{ v.identifier }}</td>
-              <td class="px-4 py-3">
-                <span v-if="v.hasVoted" class="text-green-600 font-bold bg-green-100 px-2 py-1 rounded text-xs">Voted</span>
-                <span v-else class="text-gray-500 bg-gray-100 px-2 py-1 rounded text-xs">Pending</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
       </div>
     </div>
   </div>

@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { usePolls } from './composables/usePolls';
 import PollManager from './components/PollManager.vue';
 
@@ -9,14 +9,19 @@ const selectedPoll = ref(null);
 const showModal = ref(false);
 const newPoll = ref({ title: '', description: '', startDate: '', endDate: '' });
 
-console.log(polls, getPollStatus)
-const openPoll = (poll) => { selectedPoll.value = poll; view.value = 'manager'; };
+const openPoll = (poll) => { 
+  selectedPoll.value = poll; 
+  view.value = 'manager'; 
+};
 
 const handleCreate = () => {
   if(!newPoll.value.title) return alert("Title required");
-  createPoll(newPoll.value);
+  const createdPoll = createPoll(newPoll.value);
   showModal.value = false;
   newPoll.value = { title: '', description: '', startDate: '', endDate: '' };
+  
+  // Immediately open the newly created poll
+  openPoll(createdPoll);
 };
 
 const statusColors = (s) => ({
@@ -27,19 +32,19 @@ const statusColors = (s) => ({
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-500 p-8 font-sans text-gray-900">
+  <div class="min-h-screen bg-linear-to-br from-slate-800 to-slate-600 p-8 font-sans text-white">
     <div class="max-w-5xl mx-auto">
       
       <!-- List View -->
       <div v-if="view === 'list'">
         <div class="flex justify-between items-center mb-8">
-          <h1 class="text-3xl font-black text-violet-900">🗳️ Let's Vote</h1>
+          <h1 class="text-3xl font-black text-blue-700">🗳️ Let's Vote</h1>
           <button @click="showModal = true" class="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 font-medium shadow">+ Create Poll</button>
         </div>
 
-                <!-- Centralized Image Section -->
+        <!-- Centralized Image Section -->
         <div class="flex flex-col items-center justify-center mb-8">
-          <div class="w-full h-105 overflow-hidden rounded-xl shadow-lg p-2">
+          <div class="w-full max-w-2xl overflow-hidden rounded-xl shadow-lg">
              <img src="/voting.png" alt="Voting Image" class="w-full h-full object-cover rounded-lg" />
           </div>
         </div>
@@ -72,9 +77,11 @@ const statusColors = (s) => ({
             <div><label class="text-xs font-bold text-gray-500">Start</label><input type="datetime-local" v-model="newPoll.startDate" class="w-full border p-2 rounded text-sm"></div>
             <div><label class="text-xs font-bold text-gray-500">End</label><input type="datetime-local" v-model="newPoll.endDate" class="w-full border p-2 rounded text-sm"></div>
           </div>
+          <!-- Added helper text explaining automatic behavior -->
+          <p class="text-xs text-gray-500 italic">After creation, you'll immediately see forms to add candidates and voters. The poll will automatically open for voting at the start time and close at the end time.</p>
         </div>
         <div class="flex justify-end gap-2 mt-6">
-          <button @click="showModal = false" class="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded">Cancel</button>
+          <button @click="showModal = false" class="px-4 py-2 text-white hover:bg-black rounded">Cancel</button>
           <button @click="handleCreate" class="px-6 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Create</button>
         </div>
       </div>
